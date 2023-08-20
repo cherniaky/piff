@@ -2,7 +2,7 @@
 
 import sys
 import re
-from typing import TypeVar, List, Sequence, Tuple, Union
+from typing import TypeVar, List, Sequence, Tuple, Optional
 from typing_extensions import Literal
 
 
@@ -182,18 +182,14 @@ class HelpSubcommand(Subcommand):
         subcmd_name, *args = args
 
         subcmd = find_subcommand(subcmd_name)
-        if isinstance(subcmd, Subcommand):
+        if subcmd is not None:
             print(f"Usage: {subcmd.name} {subcmd.signature}")
             print(f"    {subcmd.description}")
             return 0
 
-        candidates: List[str] = subcmd
         usage(program)
         print(f"ERROR: unknown subcommand {subcmd_name}")
-        if len(candidates) > 0:
-            print("Maybe you meant:")
-            for name in candidates:
-                print(f"    {name}")
+        suggest_closest_subcommand_if_exists(subcmd_name)
 
         return 1
 
@@ -215,12 +211,21 @@ def usage(program: str) -> None:
         print(f'    {command}    {subcmd.description}')
 
 
-def find_subcommand(subcmd_name: str) -> Union[Subcommand, List[str]]:
+def suggest_closest_subcommand_if_exists(subcmd_name: str) -> None:
+    candidates = [subcmd.name for subcmd in SUBCOMMANDS if len(
+        edit_distance(subcmd_name, subcmd.name)) < 3]
+
+    if len(candidates) > 0:
+        print("Maybe you meant:")
+        for name in candidates:
+            print(f"    {name}")
+
+
+def find_subcommand(subcmd_name: str) -> Optional[Subcommand]:
     for subcmd in SUBCOMMANDS:
         if subcmd_name == subcmd.name:
             return subcmd
-
-    return [subcmd.name for subcmd in SUBCOMMANDS if len(edit_distance(subcmd.name, subcmd_name)) < 3]
+    return None
 
 
 def main() -> int:
@@ -238,14 +243,9 @@ def main() -> int:
     if isinstance(subcmd, Subcommand):
         return subcmd.run(program, args)
 
-    candidates: List[str] = subcmd
-
     usage(program)
     print(f"ERROR: unknown subcommand {subcmd_name}")
-    if len(candidates) > 0:
-        print("Maybe you meant:")
-        for name in candidates:
-            print(f"    {name}")
+    suggest_closest_subcommand_if_exists(subcmd_name)
     return 1
 
 
