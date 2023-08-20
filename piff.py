@@ -2,29 +2,25 @@
 
 import sys
 import re
+from typing import *
+from typing_extensions import Literal
 
 
-def read_entire_file(file_path):
+def read_entire_file(file_path: str) -> str:
     with open(file_path) as f:
         return f.read()
 
 
-IGNORE = 'I'
-ADD = 'A'
-REMOVE = 'R'
+Action = Literal['I', 'A', 'R']
+
+IGNORE: Action = 'I'
+ADD: Action = 'A'
+REMOVE: Action = 'R'
+
+T = TypeVar("T")
 
 
-def trace_tables(cache, actions):
-    for row in range(len(cache)):
-        for col in range(len(cache[row])):
-            item = cache[row][col]
-            action = actions[row][col]
-            print(f"{item} ({action})".ljust(6), end=' ')
-        print()
-    print()
-
-
-def edit_distance(s1, s2):
+def edit_distance(s1: Sequence[T], s2: Sequence[T]) -> List[Tuple[Action, int, T]]:
     m1 = len(s1)
     m2 = len(s2)
 
@@ -86,14 +82,22 @@ def edit_distance(s1, s2):
     return patch
 
 
-PATCH_LINE_REGEXP = re.compile("([AR]) (\d+) (.*)")
+PATCH_LINE_REGEXP: re.Pattern = re.compile("([AR]) (\d+) (.*)")
 
 
 class Subcommand:
-    def __init__(self, name, signature, description):
+    name: str
+    signature: str
+    description: str
+
+    def __init__(self, name: str, signature: str, description: str):
         self.name = name
         self.signature = signature
         self.description = description
+
+    def run(self, program: str, args: List[str]) -> int:
+        raise NotImplementedError
+        return 0
 
 
 class DiffSubcommand(Subcommand):
@@ -101,11 +105,11 @@ class DiffSubcommand(Subcommand):
         super().__init__("diff", "<file1> <file2>",
                          "print the difference between the files to stdout")
 
-    def run(self, program, args):
+    def run(self, program: str, args: List[str]) -> int:
         if len(args) < 2:
             print(f"Usage: {program} {self.name} {self.signature}")
             print(f"ERROR: not enough files were provided to {self.name}")
-            exit(1)
+            return 1
 
         file_path1, *args = args
         file_path2, *args = args
@@ -117,18 +121,20 @@ class DiffSubcommand(Subcommand):
         for (action, n, line) in patch:
             print(f"{action} {n} {line}")
 
+        return 0
+
 
 class PatchSubcommand(Subcommand):
     def __init__(self):
         super().__init__("patch", "<file> <file.patch>",
                          "patch the file with the given patch")
 
-    def run(self, program, args):
+    def run(self, program: str, args: List[str]) -> int:
         if len(args) < 2:
             print(f"Usage: {program} {self.name} {self.signature}")
             print(
                 f"ERROR: not enough arguments were provided to {self.name} a file")
-            exit(1)
+            return 1
 
         file_path, *args = args
         patch_path, *args = args
@@ -146,7 +152,7 @@ class PatchSubcommand(Subcommand):
                 continue
             patch.append((m.group(1), int(m.group(2)), m.group(3)))
         if not ok:
-            exit(1)
+            return 1
 
         for (action, row, line) in reversed(patch):
             if action == ADD:
@@ -161,36 +167,39 @@ class PatchSubcommand(Subcommand):
                 f.write(line)
                 f.write('\n')
 
+        return 0
+
 
 class HelpSubcommand(Subcommand):
     def __init__(self):
         super().__init__("help", "[subcommand]", "print this help message")
 
-    def run(self, program, args):
+    def run(self, program: str, args: List[str]) -> int:
         if len(args) == 0:
             usage(program)
-            return
+            return 1
 
         subcmd_name, *args = args
         for subcmd in SUBCOMMANDS:
             if subcmd.name == subcmd_name:
                 print(f"Usage: {subcmd.name} {subcmd.signature}")
                 print(f"    {subcmd.description}")
-                return
+                return 0
 
         usage(program)
         print(f"ERROR: unknown subcommand {subcmd_name}")
-        exit(1)
+
+        return 1
 
 
-SUBCOMMANDS = [
+SUBCOMMANDS: List[Subcommand] = [
     DiffSubcommand(),
     HelpSubcommand(),
     PatchSubcommand(),
 ]
 
 
-def usage(program):
+def usage(program: str) -> None:
     print(f"Usage: {program} <SUBCOMMAND> [OPTIONS]")
     print("Subcommands:")
     width = max([len(f'{subcmd.name} {subcmd.signature}')
@@ -200,21 +209,21 @@ def usage(program):
         print(f'    {command}    {subcmd.description}')
 
 
-def main():
+def main() -> int:
     assert len(sys.argv) > 0
     program, *args = sys.argv
 
     if len(args) == 0:
         usage(program)
         print("ERROR: No subcommand was provided")
-        exit(1)
+        return 1
 
     subcmd_name, *args = args
 
     for subcmd in SUBCOMMANDS:
         if subcmd.name == subcmd_name:
             subcmd.run(program, args)
-            return
+            return 0
 
     usage(program)
     print(f"ERROR: unknown subcommand {subcmd_name}")
@@ -226,8 +235,8 @@ def main():
         print("Maybe you meant:")
         for (name, _) in candidates:
             print(f"    {name}")
-    exit(1)
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())
