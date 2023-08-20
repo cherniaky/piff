@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import re
 
 
 def read_entire_file(file_path):
@@ -88,7 +89,7 @@ def edit_distance(s1, s2):
 def diff_subcommand(program, args):
     if len(args) < 2:
         print(f"Usage: {program} diff <file1> <file2>")
-        print("ERROR: no files to compare were provided to diff subcommand")
+        print("ERROR: not enough files were provided to generate a diff")
         exit(1)
 
     file_path1, *args = args
@@ -102,8 +103,50 @@ def diff_subcommand(program, args):
         print(f"{action} {n} {line}")
 
 
+PATCH_LINE_REGEX = re.compile("([AR]) (\d+) (.*)")
+
+
+def line_as_patch_action(line):
+    return PATCH_LINE_REGEX.match(line)
+
+
 def patch_subcommand(program, args):
-    assert False, "not implemented"
+    if len(args) < 2:
+        print(f"Usage: {program} patch <file> <file.patch>")
+        print("ERROR: not enough arguments were provided to the patch")
+
+    file_path, *args = args
+    patch_path, *args = args
+
+    lines = read_entire_file(file_path).splitlines()
+    patch = []
+    ok = True
+
+    for (row, line) in enumerate(read_entire_file(patch_path).splitlines()):
+        if len(line) == 0:
+            continue
+        m = PATCH_LINE_REGEX.match(line)
+        if m is None:
+            print(f"{patch_path}:{row}: Invalid patch action: {line}")
+            ok = False
+            continue
+        patch.append((m.group(1), int(m.group(2)), m.group(3)))
+
+    if not ok:
+        exit(1)
+
+    for (action, row, line) in reversed(patch):
+        if action == ADD:
+            lines.insert(row - 1, line)
+        elif action == REMOVE:
+            lines.pop(row - 1)
+        else:
+            assert False, "unreachable"
+
+    with open(file_path, "w") as f:
+        for line in lines:
+            f.write(line)
+            f.write("\n")
 
 
 def help_subcommand(program, args):
