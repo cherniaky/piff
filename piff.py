@@ -79,10 +79,10 @@ if __name__ == '__main__':
         action = actions[n1][n2]
         if action == ADD:
             n2 -= 1
-            patch.append((ADD, n2, lines2[n2]))
+            patch.append((ADD, n2 + 1, lines2[n2]))
         elif action == REMOVE:
             n1 -= 1
-            patch.append((REMOVE, n1, lines1[n1]))
+            patch.append((REMOVE, n1 + 1, lines1[n1]))
         elif action == IGNORE:
             n1 -= 1
             n2 -= 1
