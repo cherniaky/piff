@@ -1,6 +1,6 @@
 # Piff 
 
-Simple File Diff Tool in Python.<br/> 
+Simple File Diff Tool in Python.<br/>  
 It's very slow (not only because it's written in Python, but also because it uses O(N²) algorithm) and implemented for educational purposes
 
 ## Quick Start
