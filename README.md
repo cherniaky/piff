@@ -3,7 +3,7 @@
 Simple File Diff Tool in Python.<br/>  
 It's very slow (not only because it's written in Python, but also because it uses O(N²) algorithm) and implemented for educational purposes
 
-## Quick Start
+## Quick Start 
 
 ```console
 $ ./piff.py diff file1.txt file2.txt > file.patch # generates patch file with list of changes that we need to apply to go from file1 to file2
